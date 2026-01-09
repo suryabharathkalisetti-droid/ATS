@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Scan Pro | Backend Ready</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 1);
+        }
+
+        .score-circle {
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.active {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        #results-section {
+            display: none;
+        }
+
+        /* Error state styling */
+        .error-toast {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+    <!-- Navigation -->
+    <nav class="border-b bg-white/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <i class="fas fa-file-contract text-white text-xl"></i>
+                    </div>
+                    <span class="text-xl font-bold tracking-tight">ResumeScan<span class="text-blue-600">Pro</span></span>
+                </div>
+                <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+                    <a href="#" class="hover:text-blue-600 transition">How it Works</a>
+                    <a href="#" class="hover:text-blue-600 transition">History</a>
+                    <button class="bg-slate-900 text-white px-5 py-2 rounded-full hover:bg-slate-800 transition">My Account</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Error Message Placeholder -->
+    <div id="error-container" class="max-w-5xl mx-auto px-4 mt-4 hidden">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 error-toast">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-message">An error occurred while processing your request.</span>
+        </div>
+    </div>
+
+    <main class="max-w-5xl mx-auto px-4 py-12">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 text-slate-900 tracking-tight">
+                AI Resume <span class="gradient-text">Analyzer</span>
+            </h1>
+            <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+                Paste the job description and upload your resume to get a matching score and optimization tips.
+            </p>
+        </div>
+
+        <!-- Input Form Section -->
+        <section id="upload-section" class="space-y-6">
+            <div class="glass-card rounded-3xl p-8 shadow-xl shadow-blue-900/5">
+                <form id="analysis-form" class="space-y-6">
+                    <!-- Job Description Input -->
+                    <div>
+                        <label for="job-description" class="block text-sm font-bold text-slate-700 mb-2">Job Description (Optional)</label>
+                        <textarea id="job-description" name="job_description" rows="4" 
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                            placeholder="Paste the job requirements here for a better matching score..."></textarea>
+                    </div>
+
+                    <!-- Resume Upload -->
+                    <div id="drop-zone" class="drop-zone rounded-2xl py-12 flex flex-col items-center justify-center cursor-pointer group">
+                        <input type="file" id="file-input" name="resume" class="hidden" accept=".pdf,.doc,.docx">
+                        <div class="bg-blue-50 p-6 rounded-full mb-4 group-hover:scale-105 transition-transform duration-300">
+                            <i id="upload-icon" class="fas fa-cloud-upload-alt text-3xl text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold mb-1" id="file-name-display">Drop your resume here</h3>
+                        <p class="text-slate-500 text-sm mb-4">PDF or DOCX (Max 5MB)</p>
+                        <button type="button" onclick="document.getElementById('file-input').click()" class="text-blue-600 font-bold hover:underline">
+                            Browse Files
+                        </button>
+                    </div>
+
+                    <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 transition flex items-center justify-center gap-3">
+                        <span>Analyze Resume</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Loading Section -->
+        <div id="loading-section" class="hidden mb-12">
+            <div class="glass-card rounded-3xl p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-6"></div>
+                <h3 class="text-xl font-bold mb-2">Processing with AI...</h3>
+                <p class="text-slate-500 max-w-sm mx-auto">Parsing document text and extracting key skills. This usually takes a few seconds.</p>
+                <div class="max-w-md mx-auto mt-8">
+                    <div class="w-full bg-slate-100 rounded-full h-2">
+                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (Dynamic Content) -->
+        <section id="results-section" class="space-y-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Overall Score -->
+                <div class="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center">
+                    <h3 class="text-lg font-bold mb-6">Match Score</h3>
+                    <div class="relative w-40 h-40">
+                        <svg class="w-full h-full" viewBox="0 0 36 36">
+                            <path class="text-slate-100" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path id="score-path" class="text-blue-600 score-circle" stroke-width="3" stroke-dasharray="0, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="score-text" class="text-4xl font-black text-slate-900">0%</span>
+                        </div>
+                    </div>
+                    <p id="match-label" class="mt-6 text-sm font-medium text-emerald-600 bg-emerald-50 px-4 py-1 rounded-full">Analyzing...</p>
+                </div>
+
+                <!-- Score Breakdown -->
+                <div class="md:col-span-2 glass-card rounded-3xl p-8">
+                    <h3 class="text-lg font-bold mb-6">Metric Analysis</h3>
+                    <div id="metric-bars" class="space-y-6">
+                        <!-- Dynamic Progress Bars -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="glass-card rounded-3xl p-8 border-l-4 border-emerald-500">
+                    <div class="flex items-center gap-3 mb-4 text-emerald-600">
+                        <i class="fas fa-check-circle text-xl"></i>
+                        <h4 class="font-bold">Key Strengths</h4>
+                    </div>
+                    <ul id="strengths-list" class="space-y-3 text-slate-600 text-sm"></ul>
+                </div>
+                <div class="glass-card rounded-3xl p-8 border-l-4 border-amber-500">
+                    <div class="flex items-center gap-3 mb-4 text-amber-600">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                        <h4 class="font-bold">Optimization Needed</h4>
+                    </div>
+                    <ul id="improvements-list" class="space-y-3 text-slate-600 text-sm"></ul>
+                </div>
+            </div>
+
+            <div class="text-center pb-12">
+                <button onclick="window.location.reload()" class="bg-slate-100 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-200 transition">
+                    Analyze New Resume
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /**
+         * Backend-Ready State Management
+         */
+        const elements = {
+            form: document.getElementById('analysis-form'),
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            fileName: document.getElementById('file-name-display'),
+            uploadSection: document.getElementById('upload-section'),
+            loadingSection: document.getElementById('loading-section'),
+            resultsSection: document.getElementById('results-section'),
+            progressBar: document.getElementById('progress-bar'),
+            scorePath: document.getElementById('score-path'),
+            scoreText: document.getElementById('score-text'),
+            errorContainer: document.getElementById('error-container'),
+            errorMessage: document.getElementById('error-message'),
+            metricBars: document.getElementById('metric-bars'),
+            strengthsList: document.getElementById('strengths-list'),
+            improvementsList: document.getElementById('improvements-list')
+        };
+
+        // Handle file selection display
+        elements.fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                elements.fileName.textContent = file.name;
+                elements.dropZone.classList.add('bg-blue-50', 'border-blue-400');
+            }
+        };
+
+        // Form Submission Logic
+        elements.form.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const file = elements.fileInput.files[0];
+            if (!file) {
+                showError("Please upload a resume file first.");
+                return;
+            }
+
+            hideError();
+            startLoading();
+
+            try {
+                // To connect to a real backend, you would use:
+                // const formData = new FormData(elements.form);
+                // const response = await fetch('/api/analyze', { method: 'POST', body: formData });
+                // const data = await response.json();
+                
+                // For demonstration, we simulate a successful API response
+                const simulatedData = await simulateApiCall();
+                renderResults(simulatedData);
+                
+            } catch (err) {
+                showError("The server is currently busy. Please try again later.");
+                stopLoading();
+            }
+        };
+
+        function startLoading() {
+            elements.uploadSection.classList.add('hidden');
+            elements.loadingSection.classList.remove('hidden');
+            let p = 0;
+            const timer = setInterval(() => {
+                p += Math.random() * 20;
+                if (p >= 100) p = 100;
+                elements.progressBar.style.width = p + '%';
+                if (p === 100) clearInterval(timer);
+            }, 300);
+        }
+
+        function stopLoading() {
+            elements.loadingSection.classList.add('hidden');
+            elements.uploadSection.classList.remove('hidden');
+        }
+
+        async function simulateApiCall() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve({
+                        score: 82,
+                        metrics: [
+                            { label: 'ATS Parsing', value: 95, color: 'blue' },
+                            { label: 'Skill Match', value: 78, color: 'purple' },
+                            { label: 'Formatting', value: 88, color: 'emerald' }
+                        ],
+                        strengths: [
+                            "Strong use of quantifiable achievements",
+                            "High density of relevant industry keywords",
+                            "Perfect 1-page layout optimization"
+                        ],
+                        improvements: [
+                            "Missing 'Project Management' certification mention",
+                            "Personal statement could be more concise",
+                            "Consider adding a technical skills matrix section"
+                        ]
+                    });
+                }, 2500);
+            });
+        }
+
+        function renderResults(data) {
+            elements.loadingSection.classList.add('hidden');
+            elements.resultsSection.classList.remove('hidden');
+            elements.resultsSection.style.display = 'block';
+
+            // Animate Score
+            let current = 0;
+            const step = () => {
+                current++;
+                elements.scoreText.innerText = current + '%';
+                elements.scorePath.setAttribute('stroke-dasharray', `${current}, 100`);
+                if (current < data.score) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+
+            // Render Metrics
+            elements.metricBars.innerHTML = data.metrics.map(m => `
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-semibold">${m.label}</span>
+                        <span class="text-sm text-slate-500">${m.value}%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2">
+                        <div class="bg-${m.color}-500 h-2 rounded-full" style="width: ${m.value}%"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render Lists
+            elements.strengthsList.innerHTML = data.strengths.map(s => `<li class="flex gap-2"><span>•</span> ${s}</li>`).join('');
+            elements.improvementsList.innerHTML = data.improvements.map(i => `<li class="flex gap-2"><span>•</span> ${i}</li>`).join('');
+        }
+
+        function showError(msg) {
+            elements.errorMessage.textContent = msg;
+            elements.errorContainer.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function hideError() {
+            elements.errorContainer.classList.add('hidden');
+        }
+
+        // Drop zone drag handlers
+        ['dragenter', 'dragover'].forEach(e => {
+            elements.dropZone.addEventListener(e, () => elements.dropZone.classList.add('active'));
+        });
+        ['dragleave', 'drop'].forEach(e => {
+            elements.dropZone.addEventListener(e, () => elements.dropZone.classList.remove('active'));
+        });
+        elements.dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.fileInput.files = e.dataTransfer.files;
+            elements.fileInput.dispatchEvent(new Event('change'));
+        });
+    </script>
+</body>
+</html>
